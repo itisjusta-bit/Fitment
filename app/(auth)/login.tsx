@@ -4,6 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // 🌟 ADDED IMPORT
+
 // Supabase client import
 import { supabase } from '../../lib/supabase';
 
@@ -48,10 +50,18 @@ export default function LoginScreen() {
       setErrorMsg('Invalid login credentials.');
       triggerShake();
     } else {
-      // Login success hone par user ko direct home tabs pe bhejna hai
       console.log("Login Success:", data);
-      router.replace('/(tabs)'); // Abhi tabs bane nahi hain isliye commented hai
-     // alert("Login Successful! (Dashboard coming soon)");
+      
+      // 🌟 THE FIX: Purge the ghost cache before letting them into the dashboard
+      await AsyncStorage.multiRemove([
+        'fitment_protocol',
+        'logged_exercise_indices',
+        'logged_meal_indices',
+        'program_start_date'
+      ]);
+
+      // Login success hone par user ko direct home tabs pe bhejna hai
+      router.replace('/(tabs)'); 
     }
     
     setLoading(false);

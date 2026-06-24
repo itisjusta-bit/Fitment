@@ -4,6 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // 🌟 ADDED IMPORT
+
 // Supabase client ko import kar rahe hain backend connection ke liye
 import { supabase } from '../../lib/supabase';
 
@@ -79,8 +81,17 @@ export default function RegisterScreen() {
       setErrorMsg(`⚠️ ${error.message}`);
       triggerShake();
     } else {
-      // Success! Account ban gaya, ab user ko onboarding quiz pe bhejo
       console.log("Account Created:", data);
+      
+      // 🌟 THE FIX: Purge the ghost cache before they start the onboarding quiz
+      await AsyncStorage.multiRemove([
+        'fitment_protocol',
+        'logged_exercise_indices',
+        'logged_meal_indices',
+        'program_start_date'
+      ]);
+
+      // Success! Account ban gaya, ab user ko onboarding quiz pe bhejo
       router.push('/(auth)/onboarding/1');
     }
     

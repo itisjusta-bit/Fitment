@@ -1,649 +1,104 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  Animated,
-  Easing,
-  Dimensions,
-} from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
-// ─── Replace this with your actual import ────────────────────────────────────
-import { generateFitnessProtocol } from '../../../lib/gemini';
+import { useOnboardingStore } from '../../../lib/store/onboardingStore';
 
-// ─────────────────────────────────────────────────────────────────────────────
-const { width: SW } = Dimensions.get('window');
-const BAR_WIDTH = SW - 64; // 32px horizontal padding each side
-
-// ─── DATA ─────────────────────────────────────────────────────────────────────
-const REGION_OPTIONS = [
-  {
-    id: 'indian',
-    title: 'INDIAN / ASIAN',
-    desc: 'Focus on regional spices, grains, and curries.',
-  },
-  {
-    id: 'western',
-    title: 'WESTERN',
-    desc: 'Standard macros, Mediterranean, and European bases.',
-  },
-  {
-    id: 'global',
-    title: 'GLOBAL',
-    desc: 'No preference. Give me the best of everything.',
-  },
+const FREQUENCY_OPTIONS = [
+  { id: '2_3', title: '2 - 3 DAYS', desc: 'Minimalist approach. Focus on full body.' },
+  { id: '4_5', title: '4 - 5 DAYS', desc: 'Standard split. Balanced volume and recovery.' },
+  { id: '6', title: '6 DAYS', desc: 'Advanced. High volume and strict scheduling.' }
 ];
 
-const LOADING_STEPS = [
-  { id: 0, label: 'ANALYZING BIOMETRICS',    revealAt: 0    },
-  { id: 1, label: 'CALCULATING MACRO TARGETS', revealAt: 1500 },
-  { id: 2, label: 'BUILDING TRAINING SPLIT',  revealAt: 3000 },
-  { id: 3, label: 'FINALIZING PROTOCOL',      revealAt: 4500 },
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// LOADING STEP ITEM
-// ─────────────────────────────────────────────────────────────────────────────
-type StepItemProps = {
-  label: string;
-  revealAt: number;
-  isActive: boolean;
-  isDone: boolean;
-};
-
-const StepItem = ({ label, revealAt, isActive, isDone }: StepItemProps) => {
-  const slide    = useRef(new Animated.Value(18)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
-  const dotScale = useRef(new Animated.Value(0.6)).current;
-  const checkScale = useRef(new Animated.Value(0)).current;
-  const badgeOpac  = useRef(new Animated.Value(0)).current;
-
-  // Slide-in on reveal
-  useEffect(() => {
-    const t = setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(slide,   { toValue: 0,   duration: 500, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 1,   duration: 500, useNativeDriver: true }),
-        Animated.spring(dotScale,{ toValue: 1,   friction: 6, useNativeDriver: true }),
-      ]).start();
-    }, revealAt);
-    return () => clearTimeout(t);
-  }, [revealAt, slide, opacity, dotScale]);
-
-  // Active badge fade-in
-  useEffect(() => {
-    if (isActive) {
-      Animated.timing(badgeOpac, { toValue: 1, duration: 300, useNativeDriver: true }).start();
-    } else {
-      Animated.timing(badgeOpac, { toValue: 0, duration: 200, useNativeDriver: true }).start();
-    }
-  }, [isActive, badgeOpac]);
-
-  // Checkmark spring-in when done
-  useEffect(() => {
-    if (isDone) {
-      Animated.spring(checkScale, {
-        toValue: 1, friction: 4, tension: 180, useNativeDriver: true,
-      }).start();
-    }
-  }, [isDone, checkScale]);
-
-  const dotBg = isDone
-    ? '#00C896'
-    : isActive
-    ? 'rgba(0,200,150,0.10)'
-    : 'rgba(226,234,244,0.6)';
-
-  const dotBorder = isDone || isActive ? '#00C896' : '#D1D9E6';
-
-  return (
-    <Animated.View
-      style={[
-        styles.stepRow,
-        { opacity, transform: [{ translateY: slide }] },
-      ]}
-    >
-      {/* Dot / Check */}
-      <Animated.View
-        style={[
-          styles.stepDot,
-          {
-            backgroundColor: dotBg,
-            borderColor: dotBorder,
-            transform: [{ scale: isDone ? checkScale : dotScale }],
-          },
-        ]}
-      >
-        {isDone && <Text style={styles.stepCheck}>✓</Text>}
-        {isActive && !isDone && <View style={styles.stepPip} />}
-      </Animated.View>
-
-      {/* Label */}
-      <Text
-        style={[
-          styles.stepLabel,
-          isActive && styles.stepLabelActive,
-          isDone && styles.stepLabelDone,
-        ]}
-      >
-        {label}
-      </Text>
-
-      {/* "RUNNING" badge */}
-      <Animated.View style={[styles.runBadge, { opacity: badgeOpac }]}>
-        <Text style={styles.runBadgeText}>RUNNING</Text>
-      </Animated.View>
-    </Animated.View>
-  );
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MAIN SCREEN
-// ─────────────────────────────────────────────────────────────────────────────
-export default function OnboardingStep7() {
+export default function OnboardingStep6() {
   const router = useRouter();
-  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
-  const [isSubmitting,   setIsSubmitting]   = useState(false);
-  const [activeStep,     setActiveStep]     = useState(0);
+  const updateField = useOnboardingStore((state) => state.updateField);
+  const [selectedFreq, setSelectedFreq] = useState<string | null>(null);
+  const progressAnim = useRef(new Animated.Value(5)).current;
 
-  // ── Animated values ─────────────────────────────────────────────────────
-  const stepBarAnim = useRef(new Animated.Value(6)).current; // onboarding progress bar
-  const overlayOpac = useRef(new Animated.Value(0)).current; // loading overlay fade
-
-  // Sonar pulse rings (3 independent loops)
-  const ring1 = useRef(new Animated.Value(0)).current;
-  const ring2 = useRef(new Animated.Value(0)).current;
-  const ring3 = useRef(new Animated.Value(0)).current;
-
-  // Center icon effects
-  const breathe  = useRef(new Animated.Value(1)).current;   // scale pulse
-  const glowOpac = useRef(new Animated.Value(0.3)).current; // green glow ring
-
-  // Bottom progress bar + its leading dot
-  const fillAnim = useRef(new Animated.Value(0)).current;
-
-  // ── Init step-7 fill on mount ────────────────────────────────────────────
   useEffect(() => {
-    Animated.timing(stepBarAnim, {
-      toValue: 7, duration: 600, useNativeDriver: false,
-    }).start();
-  }, [stepBarAnim]);
+    Animated.timing(progressAnim, { toValue: 6, duration: 600, useNativeDriver: false }).start();
+  }, []);
 
-  // ── Start all loading animations ─────────────────────────────────────────
-  const startAnimations = useCallback(() => {
-    // Step ticker: advance every 1500 ms
-    let index = 0;
-    const tick: ReturnType<typeof setInterval> = setInterval(() => {
-      index = Math.min(index + 1, LOADING_STEPS.length - 1);
-      setActiveStep(index);
-    }, 1500);
+  const handleSelect = (id: string) => {
+    setSelectedFreq(id);
+    
+    // Map ID to correct Number for Python Engine
+    let freqNumber = 4;
+    if (id === '2_3') freqNumber = 3;
+    if (id === '4_5') freqNumber = 4;
+    if (id === '6') freqNumber = 6;
+    
+    updateField('frequency', freqNumber);
 
-    // Progress bar fills over ~6.5 s
-    Animated.timing(fillAnim, {
-      toValue: 1,
-      duration: 6500,
-      easing: Easing.inOut(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
-
-    // ── Sonar rings ─────────────────────────────────────────────────────────
-    const sonar = (anim: Animated.Value, delay: number) => {
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(delay),
-          Animated.timing(anim, {
-            toValue: 1,
-            duration: 2400,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.timing(anim, { toValue: 0, duration: 0, useNativeDriver: true }),
-        ])
-      ).start();
-    };
-    sonar(ring1, 0);
-    sonar(ring2, 800);
-    sonar(ring3, 1600);
-
-    // ── Breathe pulse ────────────────────────────────────────────────────────
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(breathe, {
-          toValue: 1.13,
-          duration: 1100,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(breathe, {
-          toValue: 1.0,
-          duration: 1100,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    // ── Glow ring opacity pulse ───────────────────────────────────────────────
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowOpac, {
-          toValue: 0.65,
-          duration: 900,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(glowOpac, {
-          toValue: 0.2,
-          duration: 900,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    return tick; // return so we can clearInterval later
-  }, [fillAnim, ring1, ring2, ring3, breathe, glowOpac]);
-
-  // ── Handle generate button ────────────────────────────────────────────────
-  const handleFinish = async () => {
-    if (!selectedRegion) return;
-
-    setIsSubmitting(true);
-    setActiveStep(0);
-
-    // Fade in overlay
-    Animated.timing(overlayOpac, {
-      toValue: 1, duration: 380, useNativeDriver: true,
-    }).start();
-
-    const tick = startAnimations();
-
-    const mockStats = {
-      goal: 'build_muscle',
-      gender: 'Male',
-      age: 21,
-      weight: 75,
-      height: 180,
-      diet: 'standard',
-      activity: 'moderate',
-      equipment: 'full_gym',
-      frequency: '4_5',
-      region: selectedRegion as string,
-    };
-
-    try {
-      const protocolData = await generateFitnessProtocol(mockStats);
-      if (protocolData) {
-        console.log('Protocol Generated:', protocolData);
-        router.replace('/(tabs)');  
-        // alert('Success! Check console for AI generated JSON.');
-      } else {
-        alert('Failed to generate protocol. Try again.');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Error contacting AI.');
-    } finally {
-      clearInterval(tick);
-      Animated.timing(overlayOpac, {
-        toValue: 0, duration: 300, useNativeDriver: true,
-      }).start(() => {
-        setIsSubmitting(false);
-        fillAnim.setValue(0);
-      });
-    }
+    setTimeout(() => { router.push('/(auth)/onboarding/8'); }, 400);
   };
 
-  // ── Interpolations ────────────────────────────────────────────────────────
-  const mkRing = (anim: Animated.Value) => ({
-    scale:   anim.interpolate({ inputRange: [0, 1], outputRange: [0.35, 3.0] }),
-    opacity: anim.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 0.5, 0] }),
-  });
-  const r1 = mkRing(ring1);
-  const r2 = mkRing(ring2);
-  const r3 = mkRing(ring3);
-
-  const fillWidth = fillAnim.interpolate({
-    inputRange: [0, 1], outputRange: [0, BAR_WIDTH],
-  });
-
-  // ─────────────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar style="dark" />
-
-      {/* Page gradient */}
-      <LinearGradient
-        colors={['#E8FAF4', '#EFF6FF']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-
-      {/* Onboarding progress bar */}
-      <View style={styles.stepBarBg}>
-        <Animated.View
-          style={[
-            styles.stepBarFill,
-            {
-              width: stepBarAnim.interpolate({
-                inputRange: [0, 7],
-                outputRange: ['0%', '100%'],
-              }),
-            },
-          ]}
-        />
+      <LinearGradient colors={['#E8FAF4', '#EFF6FF']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+      <View style={styles.progressBarBg}>
+        <Animated.View style={[styles.progressBarFill, { width: progressAnim.interpolate({ inputRange: [0, 7], outputRange: ['0%', '100%'] }) }]} />
       </View>
-
-      {/* ── Main content ──────────────────────────────────────────────────── */}
       <View style={styles.content}>
         <View style={styles.topBar}>
-          <Pressable
-            onPress={() => router.back()}
-            style={styles.backBtn}
-            disabled={isSubmitting}
-          >
+          <Pressable onPress={() => router.back()} style={styles.backButton}>
             <Text style={styles.backText}>← BACK</Text>
           </Pressable>
-          <Text style={styles.stepNum}>07 / 07</Text>
+          <Text style={styles.stepIndicator}>06 / 07</Text>
         </View>
-
-        <View style={styles.header}>
-          <Text style={styles.headline}>DIETARY</Text>
-          <Text style={styles.headlineGreen}>REGION?</Text>
-          <Text style={styles.subheadline}>
-            Help us tailor your meals to foods you love.
-          </Text>
+        <View style={styles.headerContainer}>
+          <Text style={styles.headline}>COMMITMENT</Text>
+          <Text style={styles.headlineHighlight}>LEVEL?</Text>
+          <Text style={styles.subheadline}>How many days per week can you train?</Text>
         </View>
-
-        <View style={styles.optionList}>
-          {REGION_OPTIONS.map((opt) => {
-            const sel = selectedRegion === opt.id;
+        <View style={styles.listContainer}>
+          {FREQUENCY_OPTIONS.map((option) => {
+            const isSelected = selectedFreq === option.id;
             return (
-              <Pressable
-                key={opt.id}
-                style={[styles.optionCard, sel && styles.optionCardSel]}
-                onPress={() => setSelectedRegion(opt.id)}
-                disabled={isSubmitting}
-              >
-                <View style={styles.optionText}>
-                  <Text style={[styles.optionTitle, sel && styles.optionTitleSel]}>
-                    {opt.title}
-                  </Text>
-                  <Text style={[styles.optionDesc, sel && styles.optionDescSel]}>
-                    {opt.desc}
-                  </Text>
+              <Pressable key={option.id} style={[styles.card, isSelected && styles.cardSelected]} onPress={() => handleSelect(option.id)}>
+                <View style={styles.cardTextContainer}>
+                  <Text style={[styles.cardTitle, isSelected && styles.cardTitleSelected]}>{option.title}</Text>
+                  <Text style={[styles.cardDesc, isSelected && styles.cardDescSelected]}>{option.desc}</Text>
                 </View>
-                <View style={[styles.radio, sel && styles.radioSel]}>
-                  {sel && <View style={styles.radioFill} />}
+                <View style={[styles.radioCircle, isSelected && styles.radioCircleSelected]}>
+                  {isSelected && <View style={styles.radioInner} />}
                 </View>
               </Pressable>
             );
           })}
         </View>
-
-        <View style={styles.footer}>
-          <Pressable
-            style={[
-              styles.ctaBtn,
-              (!selectedRegion || isSubmitting) && styles.ctaBtnDisabled,
-            ]}
-            onPress={handleFinish}
-            disabled={!selectedRegion || isSubmitting}
-          >
-            <Text style={styles.ctaBtnText}>
-              {isSubmitting ? 'GENERATING...' : 'GENERATE PROTOCOL'}
-            </Text>
-          </Pressable>
-        </View>
       </View>
-
-      {/* ══════════════════════════════════════════════════════════════════ */}
-      {/* LOADING OVERLAY                                                    */}
-      {/* ══════════════════════════════════════════════════════════════════ */}
-      {isSubmitting && (
-        <Animated.View style={[styles.overlay, { opacity: overlayOpac }]}>
-
-          {/* Frosted gradient background */}
-          <LinearGradient
-            colors={['rgba(232,250,244,0.97)', 'rgba(239,246,255,0.98)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
-
-          {/* ── SONAR RINGS + CENTER ICON ──────────────────────────────── */}
-          <View style={styles.iconHub}>
-
-            {/* Three sonar rings */}
-            {[r1, r2, r3].map((r, i) => (
-              <Animated.View
-                key={i}
-                style={[
-                  styles.ring,
-                  {
-                    opacity: r.opacity,
-                    transform: [{ scale: r.scale }],
-                  },
-                ]}
-              />
-            ))}
-
-            {/* Soft glow behind icon */}
-            <Animated.View style={[styles.iconGlow, { opacity: glowOpac }]} />
-
-            {/* Center icon — breathes */}
-            <Animated.View
-              style={[styles.iconCircle, { transform: [{ scale: breathe }] }]}
-            >
-              <Text style={styles.iconEmoji}>💪</Text>
-            </Animated.View>
-          </View>
-
-          {/* ── HEADLINE ───────────────────────────────────────────────── */}
-          <Text style={styles.overlayTitle}>AI ARCHITECT AT WORK</Text>
-          <Text style={styles.overlaySub}>
-            Building your personalised Fitment protocol
-          </Text>
-
-          {/* ── STEP LIST ──────────────────────────────────────────────── */}
-          <View style={styles.stepList}>
-            {LOADING_STEPS.map((step, i) => (
-              <StepItem
-                key={step.id}
-                label={step.label}
-                revealAt={step.revealAt}
-                isActive={activeStep === i}
-                isDone={activeStep > i}
-              />
-            ))}
-          </View>
-
-          {/* ── PROGRESS BAR ───────────────────────────────────────────── */}
-          <View style={styles.barWrap}>
-            {/* Track */}
-            <View style={styles.barTrack}>
-              {/* Fill */}
-              <Animated.View style={[styles.barFill, { width: fillWidth }]}>
-                {/* Leading glow dot */}
-                <View style={styles.barDot} />
-              </Animated.View>
-            </View>
-            <Text style={styles.barLabel}>GENERATING YOUR PROTOCOL</Text>
-          </View>
-
-        </Animated.View>
-      )}
     </SafeAreaView>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STYLES
-// ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1 },
-
-  // ── Onboarding step bar ────────────────────────────────────────────────────
-  stepBarBg:   { height: 4, backgroundColor: '#E2EAF4' },
-  stepBarFill: { height: '100%', backgroundColor: '#00C896', borderRadius: 2 },
-
-  // ── Main layout ────────────────────────────────────────────────────────────
-  content:       { flex: 1, paddingHorizontal: 24, paddingTop: 24 },
-
-  topBar:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40 },
-  backBtn:       { paddingVertical: 8, paddingRight: 16 },
-  backText:      { fontSize: 12, fontWeight: '800', color: '#94A3B8', letterSpacing: 1 },
-  stepNum:       { fontSize: 12, fontWeight: '700', color: '#94A3B8', letterSpacing: 2 },
-
-  header:        { marginBottom: 44 },
-  headline:      { fontSize: 34, fontWeight: '900', color: '#0A0F1E', letterSpacing: -1 },
-  headlineGreen: { fontSize: 34, fontWeight: '900', color: '#00C896', letterSpacing: -1, marginTop: -4 },
-  subheadline:   { fontSize: 14, fontWeight: '500', color: '#4A5568', marginTop: 12 },
-
-  // ── Option cards ───────────────────────────────────────────────────────────
-  optionList: { gap: 14 },
-  optionCard: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.75)', padding: 22, borderRadius: 16,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.90)',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04, shadowRadius: 12, elevation: 2,
-  },
-  optionCardSel: { borderColor: '#00C896', backgroundColor: 'rgba(0,200,150,0.07)' },
-  optionText:    { flex: 1, paddingRight: 16 },
-  optionTitle:   { fontSize: 15, fontWeight: '800', color: '#0A0F1E', letterSpacing: 0.4, marginBottom: 5 },
-  optionTitleSel:{ color: '#00A07A' },
-  optionDesc:    { fontSize: 13, color: '#4A5568', lineHeight: 18 },
-  optionDescSel: { color: '#0A0F1E' },
-
-  radio: {
-    width: 24, height: 24, borderRadius: 12,
-    borderWidth: 2, borderColor: '#D1D9E6',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  radioSel:  { borderColor: '#00C896' },
-  radioFill: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#00C896' },
-
-  // ── Footer CTA ─────────────────────────────────────────────────────────────
-  footer: {
-    position: 'absolute', bottom: 0, left: 24, right: 24,
-    paddingBottom: 36, paddingTop: 16,
-  },
-  ctaBtn: {
-    height: 56, backgroundColor: '#00C896', borderRadius: 16,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#00C896', shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.32, shadowRadius: 14, elevation: 6,
-  },
-  ctaBtnDisabled: { backgroundColor: '#DDE5F0', shadowOpacity: 0, elevation: 0 },
-  ctaBtnText:     { color: '#FFFFFF', fontSize: 15, fontWeight: '800', letterSpacing: 1.2 },
-
-  // ══ LOADING OVERLAY ════════════════════════════════════════════════════════
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 100,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 32,
-  },
-
-  // ── Icon hub (rings + glow + icon all centered) ───────────────────────────
-  iconHub: {
-    width: 140, height: 140,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 28,
-  },
-  ring: {
-    position: 'absolute',
-    width: 100, height: 100, borderRadius: 50,
-    borderWidth: 1.5,
-    borderColor: '#00C896',
-  },
-  iconGlow: {
-    position: 'absolute',
-    width: 96, height: 96, borderRadius: 48,
-    backgroundColor: '#00C896',
-  },
-  iconCircle: {
-    width: 82, height: 82, borderRadius: 41,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#00C896',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.40,
-    shadowRadius: 20,
-    elevation: 14,
-    zIndex: 10,
-  },
-  iconEmoji: { fontSize: 36 },
-
-  // ── Text below icon ────────────────────────────────────────────────────────
-  overlayTitle: {
-    fontSize: 19, fontWeight: '900', color: '#0A0F1E',
-    letterSpacing: 0.6, textAlign: 'center',
-  },
-  overlaySub: {
-    fontSize: 13, fontWeight: '500', color: '#94A3B8',
-    textAlign: 'center', marginTop: 6, marginBottom: 36,
-    lineHeight: 20,
-  },
-
-  // ── Step list ──────────────────────────────────────────────────────────────
-  stepList: { width: '100%', gap: 18, marginBottom: 40 },
-
-  stepRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-  },
-  stepDot: {
-    width: 30, height: 30, borderRadius: 15,
-    borderWidth: 1.5,
-    alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0,
-  },
-  stepPip:   { width: 8, height: 8, borderRadius: 4, backgroundColor: '#00C896' },
-  stepCheck: { fontSize: 13, color: '#FFFFFF', fontWeight: '900' },
-
-  stepLabel:      { flex: 1, fontSize: 12, fontWeight: '700', letterSpacing: 0.5, color: '#C2CDD8' },
-  stepLabelActive:{ color: '#0A0F1E' },
-  stepLabelDone:  { color: '#64748B' },
-
-  runBadge: {
-    backgroundColor: 'rgba(0,200,150,0.12)',
-    paddingHorizontal: 9, paddingVertical: 4, borderRadius: 100,
-  },
-  runBadgeText: { fontSize: 9, fontWeight: '800', color: '#00A07A', letterSpacing: 0.6 },
-
-  // ── Bottom progress bar ────────────────────────────────────────────────────
-  barWrap:  { width: '100%', alignItems: 'center', gap: 10 },
-  barTrack: {
-    width: BAR_WIDTH, height: 5, backgroundColor: '#E2EAF4',
-    borderRadius: 3, overflow: 'hidden',
-  },
-  barFill: {
-    height: '100%', backgroundColor: '#00C896',
-    borderRadius: 3,
-    // leading-edge glow container
-    position: 'absolute', left: 0, top: 0,
-    alignItems: 'flex-end', justifyContent: 'center',
-  },
-  barDot: {
-    width: 10, height: 10, borderRadius: 5,
-    backgroundColor: '#00C896',
-    right: -5, position: 'absolute',
-    shadowColor: '#00C896',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 6,
-    elevation: 6,
-  },
-  barLabel: {
-    fontSize: 10, fontWeight: '700', color: '#94A3B8',
-    letterSpacing: 1.2, textAlign: 'center',
-  },
+  progressBarBg: { height: 4, backgroundColor: '#E2EAF4', width: '100%' },
+  progressBarFill: { height: '100%', backgroundColor: '#00C896' },
+  content: { flex: 1, paddingHorizontal: 24, paddingTop: 24 },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40 },
+  backButton: { paddingVertical: 8, paddingRight: 16 },
+  backText: { fontSize: 12, fontWeight: '800', color: '#94A3B8', letterSpacing: 1 },
+  stepIndicator: { fontSize: 12, color: '#94A3B8', fontWeight: '700', letterSpacing: 2 },
+  headerContainer: { marginBottom: 48 },
+  headline: { fontSize: 34, fontWeight: '900', color: '#0A0F1E', letterSpacing: -1 },
+  headlineHighlight: { fontSize: 34, fontWeight: '900', color: '#00C896', letterSpacing: -1, marginTop: -4 },
+  subheadline: { fontSize: 14, color: '#4A5568', marginTop: 12, fontWeight: '500' },
+  listContainer: { gap: 16 },
+  card: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(255,255,255,0.75)', padding: 24, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.90)', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2 },
+  cardSelected: { borderColor: '#00C896', backgroundColor: 'rgba(0, 200, 150, 0.08)' },
+  cardTextContainer: { flex: 1, paddingRight: 16 },
+  cardTitle: { fontSize: 16, fontWeight: '800', color: '#0A0F1E', letterSpacing: 0.5, marginBottom: 6 },
+  cardTitleSelected: { color: '#0A0F1E' },
+  cardDesc: { fontSize: 13, color: '#4A5568', lineHeight: 18 },
+  cardDescSelected: { color: '#0A0F1E' },
+  radioCircle: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#E2EAF4', alignItems: 'center', justifyContent: 'center' },
+  radioCircleSelected: { borderColor: '#00C896' },
+  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#00C896' }
 });

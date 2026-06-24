@@ -1,97 +1,95 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
-import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
+import React from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
-const EQUIPMENT_OPTIONS = [
-  { id: 'full_gym', title: 'FULL GYM', desc: 'Access to machines, barbells, and free weights.' },
-  { id: 'home_gym', title: 'HOME SETUP', desc: 'Dumbbells, resistance bands, or kettlebells.' },
-  { id: 'bodyweight', title: 'BODYWEIGHT', desc: 'No equipment. Pure calisthenics and cardio.' }
-];
+// 🌟 Import your global store!
+import { useOnboardingStore } from '../../../lib/store/onboardingStore';
 
-export default function OnboardingStep5() {
+export default function ExperienceScreen() {
   const router = useRouter();
-  const [selectedEq, setSelectedEq] = useState<string | null>(null);
-  const progressAnim = useRef(new Animated.Value(4)).current;
+  
+  // Read and Write directly to your global memory backpack
+  const { experience, setExperience } = useOnboardingStore();
 
-  useEffect(() => {
-    Animated.timing(progressAnim, { toValue: 5, duration: 600, useNativeDriver: false }).start();
-  }, []);
+  const levels = [
+    { id: 'newbie', icon: '🌱', title: 'Newbie', desc: 'Less than 6 months or just starting' },
+    { id: 'intermediate', icon: '⚡', title: 'Intermediate', desc: '6 months to 2 years, know the basics' },
+    { id: 'pro', icon: '🔥', title: 'Pro', desc: '2+ years, know all major lifts' }
+  ];
 
-  const handleSelect = (id: string) => {
-    setSelectedEq(id);
-    setTimeout(() => { router.push('/(auth)/onboarding/6'); }, 400);
+  const handleNext = () => {
+    // The state is already saved in Zustand via the onPress below!
+    // Change this to whatever your next screen is (e.g., 'frequency' or '6')
+    router.push('/(auth)/onboarding/6'); 
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <StatusBar style="dark" />
-      <LinearGradient colors={['#E8FAF4', '#EFF6FF']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-      
-      <View style={styles.progressBarBg}>
-        <Animated.View style={[styles.progressBarFill, { width: progressAnim.interpolate({ inputRange: [0, 7], outputRange: ['0%', '100%'] }) }]} />
-      </View>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <View>
+          {/* Top Bar for Back Navigation */}
+          <View style={styles.topBar}>
+            <Pressable onPress={() => router.back()} style={styles.backBtn}>
+              <Text style={styles.backText}>← BACK</Text>
+            </Pressable>
+            <Text style={styles.stepNum}>05 / 07</Text>
+          </View>
 
-      <View style={styles.content}>
-        <View style={styles.topBar}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backText}>← BACK</Text>
-          </Pressable>
-          <Text style={styles.stepIndicator}>05 / 07</Text>
+          <Text style={styles.header}>How experienced are you?</Text>
+          
+          <View style={styles.cardContainer}>
+            {levels.map((level) => {
+              const isActive = experience === level.id;
+              return (
+                <Pressable 
+                  key={level.id}
+                  onPress={() => setExperience(level.id)}
+                  style={[styles.card, isActive && styles.activeCard]}
+                >
+                  <Text style={styles.emoji}>{level.icon}</Text>
+                  <View style={styles.textStack}>
+                    <Text style={[styles.title, isActive && styles.activeText]}>{level.title}</Text>
+                    <Text style={[styles.desc, isActive && styles.activeText]}>{level.desc}</Text>
+                  </View>
+                  <View style={[styles.radio, isActive && styles.activeRadio]}>
+                    {isActive && <Feather name="check" size={14} color="#FFF" />}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
 
-        <View style={styles.headerContainer}>
-          <Text style={styles.headline}>AVAILABLE</Text>
-          <Text style={styles.headlineHighlight}>EQUIPMENT?</Text>
-          <Text style={styles.subheadline}>We'll build your workouts around what you have.</Text>
-        </View>
-
-        <View style={styles.listContainer}>
-          {EQUIPMENT_OPTIONS.map((option) => {
-            const isSelected = selectedEq === option.id;
-            return (
-              <Pressable key={option.id} style={[styles.card, isSelected && styles.cardSelected]} onPress={() => handleSelect(option.id)}>
-                <View style={styles.cardTextContainer}>
-                  <Text style={[styles.cardTitle, isSelected && styles.cardTitleSelected]}>{option.title}</Text>
-                  <Text style={[styles.cardDesc, isSelected && styles.cardDescSelected]}>{option.desc}</Text>
-                </View>
-                <View style={[styles.radioCircle, isSelected && styles.radioCircleSelected]}>
-                  {isSelected && <View style={styles.radioInner} />}
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
+        {/* The Next Button */}
+        <Pressable style={styles.nextButton} onPress={handleNext}>
+          <Text style={styles.nextButtonText}>CONTINUE</Text>
+          <Feather name="arrow-right" size={20} color="#FFF" />
+        </Pressable>
       </View>
     </SafeAreaView>
   );
 }
 
-// Paste the exact same styles object from Step 3 here.
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  progressBarBg: { height: 4, backgroundColor: '#E2EAF4', width: '100%' },
-  progressBarFill: { height: '100%', backgroundColor: '#00C896' },
-  content: { flex: 1, paddingHorizontal: 24, paddingTop: 24 },
-  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40 },
-  backButton: { paddingVertical: 8, paddingRight: 16 },
+  safeArea: { flex: 1, backgroundColor: '#FAFAFA' },
+  container: { flex: 1, padding: 24, justifyContent: 'space-between' },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, marginTop: 10 },
+  backBtn: { paddingVertical: 8, paddingRight: 16 },
   backText: { fontSize: 12, fontWeight: '800', color: '#94A3B8', letterSpacing: 1 },
-  stepIndicator: { fontSize: 12, color: '#94A3B8', fontWeight: '700', letterSpacing: 2 },
-  headerContainer: { marginBottom: 48 },
-  headline: { fontSize: 34, fontWeight: '900', color: '#0A0F1E', letterSpacing: -1 },
-  headlineHighlight: { fontSize: 34, fontWeight: '900', color: '#00C896', letterSpacing: -1, marginTop: -4 },
-  subheadline: { fontSize: 14, color: '#4A5568', marginTop: 12, fontWeight: '500' },
-  listContainer: { gap: 16 },
-  card: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(255,255,255,0.75)', padding: 24, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.90)', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2 },
-  cardSelected: { borderColor: '#00C896', backgroundColor: 'rgba(0, 200, 150, 0.08)' },
-  cardTextContainer: { flex: 1, paddingRight: 16 },
-  cardTitle: { fontSize: 16, fontWeight: '800', color: '#0A0F1E', letterSpacing: 0.5, marginBottom: 6 },
-  cardTitleSelected: { color: '#0A0F1E' },
-  cardDesc: { fontSize: 13, color: '#4A5568', lineHeight: 18 },
-  cardDescSelected: { color: '#0A0F1E' },
-  radioCircle: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#E2EAF4', alignItems: 'center', justifyContent: 'center' },
-  radioCircleSelected: { borderColor: '#00C896' },
-  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#00C896' }
+  stepNum: { fontSize: 12, fontWeight: '700', color: '#94A3B8', letterSpacing: 2 },
+  header: { fontSize: 28, fontWeight: '900', color: '#0A0F1E', marginBottom: 24 },
+  cardContainer: { gap: 16 },
+  card: { flexDirection: 'row', alignItems: 'center', padding: 20, backgroundColor: '#FFF', borderRadius: 16, borderWidth: 2, borderColor: '#E2EAF4' },
+  activeCard: { borderColor: '#00C896', backgroundColor: '#E8FAF4' },
+  emoji: { fontSize: 32, marginRight: 16 },
+  textStack: { flex: 1 },
+  title: { fontSize: 18, fontWeight: '800', color: '#0A0F1E', marginBottom: 4 },
+  desc: { fontSize: 13, color: '#64748B', fontWeight: '500' },
+  activeText: { color: '#007A5A' },
+  radio: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#CBD5E1', alignItems: 'center', justifyContent: 'center' },
+  activeRadio: { backgroundColor: '#00C896', borderColor: '#00C896' },
+  nextButton: { backgroundColor: '#0A0F1E', paddingVertical: 18, borderRadius: 100, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginBottom: 20 },
+  nextButtonText: { color: '#FFF', fontSize: 16, fontWeight: '800', letterSpacing: 1 }
 });

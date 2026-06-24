@@ -5,23 +5,27 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const FREQUENCY_OPTIONS = [
-  { id: '2_3', title: '2 - 3 DAYS', desc: 'Minimalist approach. Focus on full body.' },
-  { id: '4_5', title: '4 - 5 DAYS', desc: 'Standard split. Balanced volume and recovery.' },
-  { id: '6', title: '6 DAYS', desc: 'Advanced. High volume and strict scheduling.' }
+import { useOnboardingStore } from '../../../lib/store/onboardingStore';
+
+const EQUIPMENT_OPTIONS = [
+  { id: 'full_gym', title: 'FULL GYM', desc: 'Access to machines, barbells, and free weights.' },
+  { id: 'dumbbells', title: 'HOME SETUP', desc: 'Dumbbells, resistance bands, or kettlebells.' },
+  { id: 'no_equipment', title: 'BODYWEIGHT', desc: 'No equipment. Pure calisthenics and cardio.' }
 ];
 
-export default function OnboardingStep6() {
+export default function OnboardingStep5() {
   const router = useRouter();
-  const [selectedFreq, setSelectedFreq] = useState<string | null>(null);
-  const progressAnim = useRef(new Animated.Value(5)).current;
+  const updateField = useOnboardingStore((state) => state.updateField);
+  const [selectedEq, setSelectedEq] = useState<string | null>(null);
+  const progressAnim = useRef(new Animated.Value(4)).current;
 
   useEffect(() => {
-    Animated.timing(progressAnim, { toValue: 6, duration: 600, useNativeDriver: false }).start();
+    Animated.timing(progressAnim, { toValue: 5, duration: 600, useNativeDriver: false }).start();
   }, []);
 
   const handleSelect = (id: string) => {
-    setSelectedFreq(id);
+    setSelectedEq(id);
+    updateField('equipment', id);
     setTimeout(() => { router.push('/(auth)/onboarding/7'); }, 400);
   };
 
@@ -29,28 +33,24 @@ export default function OnboardingStep6() {
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar style="dark" />
       <LinearGradient colors={['#E8FAF4', '#EFF6FF']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-      
       <View style={styles.progressBarBg}>
         <Animated.View style={[styles.progressBarFill, { width: progressAnim.interpolate({ inputRange: [0, 7], outputRange: ['0%', '100%'] }) }]} />
       </View>
-
       <View style={styles.content}>
         <View style={styles.topBar}>
           <Pressable onPress={() => router.back()} style={styles.backButton}>
             <Text style={styles.backText}>← BACK</Text>
           </Pressable>
-          <Text style={styles.stepIndicator}>06 / 07</Text>
+          <Text style={styles.stepIndicator}>05 / 07</Text>
         </View>
-
         <View style={styles.headerContainer}>
-          <Text style={styles.headline}>COMMITMENT</Text>
-          <Text style={styles.headlineHighlight}>LEVEL?</Text>
-          <Text style={styles.subheadline}>How many days per week can you train?</Text>
+          <Text style={styles.headline}>AVAILABLE</Text>
+          <Text style={styles.headlineHighlight}>EQUIPMENT?</Text>
+          <Text style={styles.subheadline}>We'll build your workouts around what you have.</Text>
         </View>
-
         <View style={styles.listContainer}>
-          {FREQUENCY_OPTIONS.map((option) => {
-            const isSelected = selectedFreq === option.id;
+          {EQUIPMENT_OPTIONS.map((option) => {
+            const isSelected = selectedEq === option.id;
             return (
               <Pressable key={option.id} style={[styles.card, isSelected && styles.cardSelected]} onPress={() => handleSelect(option.id)}>
                 <View style={styles.cardTextContainer}>
@@ -69,7 +69,6 @@ export default function OnboardingStep6() {
   );
 }
 
-// Paste the exact same styles object from Step 3 here.
 const styles = StyleSheet.create({
   container: { flex: 1 },
   progressBarBg: { height: 4, backgroundColor: '#E2EAF4', width: '100%' },

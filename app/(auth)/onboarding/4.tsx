@@ -5,6 +5,8 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { useOnboardingStore } from '../../../lib/store/onboardingStore';
+
 const ACTIVITY_OPTIONS = [
   { id: 'sedentary', title: 'SEDENTARY', desc: 'Desk job, little to no daily exercise.' },
   { id: 'light', title: 'LIGHTLY ACTIVE', desc: 'Light exercise or sports 1-3 days a week.' },
@@ -14,6 +16,7 @@ const ACTIVITY_OPTIONS = [
 
 export default function OnboardingStep4() {
   const router = useRouter();
+  const updateField = useOnboardingStore((state) => state.updateField);
   const [selectedActivity, setSelectedActivity] = useState<string | null>(null);
   const progressAnim = useRef(new Animated.Value(3)).current;
 
@@ -23,6 +26,7 @@ export default function OnboardingStep4() {
 
   const handleSelect = (id: string) => {
     setSelectedActivity(id);
+    updateField('activity', id);
     setTimeout(() => { router.push('/(auth)/onboarding/5'); }, 400);
   };
 
@@ -30,11 +34,9 @@ export default function OnboardingStep4() {
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar style="dark" />
       <LinearGradient colors={['#E8FAF4', '#EFF6FF']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-      
       <View style={styles.progressBarBg}>
         <Animated.View style={[styles.progressBarFill, { width: progressAnim.interpolate({ inputRange: [0, 7], outputRange: ['0%', '100%'] }) }]} />
       </View>
-
       <View style={styles.content}>
         <View style={styles.topBar}>
           <Pressable onPress={() => router.back()} style={styles.backButton}>
@@ -42,13 +44,11 @@ export default function OnboardingStep4() {
           </Pressable>
           <Text style={styles.stepIndicator}>04 / 07</Text>
         </View>
-
         <View style={styles.headerContainer}>
           <Text style={styles.headline}>WHAT IS YOUR</Text>
           <Text style={styles.headlineHighlight}>ACTIVITY LEVEL?</Text>
           <Text style={styles.subheadline}>This determines your daily caloric burn.</Text>
         </View>
-
         <View style={styles.listContainer}>
           {ACTIVITY_OPTIONS.map((option) => {
             const isSelected = selectedActivity === option.id;
@@ -70,7 +70,6 @@ export default function OnboardingStep4() {
   );
 }
 
-// Paste the exact same styles object from Step 3 here.
 const styles = StyleSheet.create({
   container: { flex: 1 },
   progressBarBg: { height: 4, backgroundColor: '#E2EAF4', width: '100%' },

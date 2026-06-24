@@ -5,6 +5,8 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { useOnboardingStore } from '../../../lib/store/onboardingStore';
+
 const DIET_OPTIONS = [
   { id: 'standard', title: 'STANDARD', desc: 'No specific restrictions. I eat everything.' },
   { id: 'vegetarian', title: 'VEGETARIAN', desc: 'Plant-based, plus dairy and eggs.' },
@@ -14,6 +16,7 @@ const DIET_OPTIONS = [
 
 export default function OnboardingStep3() {
   const router = useRouter();
+  const updateField = useOnboardingStore((state) => state.updateField);
   const [selectedDiet, setSelectedDiet] = useState<string | null>(null);
   const progressAnim = useRef(new Animated.Value(2)).current;
 
@@ -23,6 +26,7 @@ export default function OnboardingStep3() {
 
   const handleSelect = (id: string) => {
     setSelectedDiet(id);
+    updateField('diet', id);
     setTimeout(() => {
       router.push('/(auth)/onboarding/4');
     }, 400);
@@ -32,11 +36,9 @@ export default function OnboardingStep3() {
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar style="dark" />
       <LinearGradient colors={['#E8FAF4', '#EFF6FF']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-      
       <View style={styles.progressBarBg}>
         <Animated.View style={[styles.progressBarFill, { width: progressAnim.interpolate({ inputRange: [0, 7], outputRange: ['0%', '100%'] }) }]} />
       </View>
-
       <View style={styles.content}>
         <View style={styles.topBar}>
           <Pressable onPress={() => router.back()} style={styles.backButton}>
@@ -44,13 +46,11 @@ export default function OnboardingStep3() {
           </Pressable>
           <Text style={styles.stepIndicator}>03 / 07</Text>
         </View>
-
         <View style={styles.headerContainer}>
           <Text style={styles.headline}>WHAT IS YOUR</Text>
           <Text style={styles.headlineHighlight}>DIET TYPE?</Text>
           <Text style={styles.subheadline}>We'll align your nutrition plan accordingly.</Text>
         </View>
-
         <View style={styles.listContainer}>
           {DIET_OPTIONS.map((option) => {
             const isSelected = selectedDiet === option.id;
